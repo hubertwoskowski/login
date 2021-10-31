@@ -1,10 +1,15 @@
 package pl.hw.login.login.model;
 
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.Table;
 
+@NoArgsConstructor
+@Getter
 @Entity
 @Table(name = "requests")
 public class Request {
@@ -14,21 +19,14 @@ public class Request {
     private String login;
 
     @Column(name="REQUEST_COUNT")
-    private String request_count;
+    private Integer requestCount = 0;
 
-    public void setLogin(String login) {
+    public Request(String login){
         this.login = login;
     }
 
-    public String getLogin() {
-        return login;
+    public void increment(){
+        this.requestCount++;
     }
 
-    public String getRequest_count() {
-        return request_count;
-    }
-
-    public void setRequest_count(String request_count) {
-        this.request_count = request_count;
-    }
 }

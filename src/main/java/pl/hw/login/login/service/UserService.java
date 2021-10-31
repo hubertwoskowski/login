@@ -1,45 +1,37 @@
 package pl.hw.login.login.service;
 
-import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.RestTemplate;
 import pl.hw.login.login.dto.GithubUserDTO;
 import pl.hw.login.login.dto.UserDTO;
+import pl.hw.login.login.exception.CustomException;
+import pl.hw.login.login.mapper.UserMapper;
+import pl.hw.login.login.model.Request;
 import pl.hw.login.login.repository.RequestRepository;
+import pl.hw.login.login.util.Calculator;
 
-import java.util.Optional;
+import javax.transaction.Transactional;
 
+@RequiredArgsConstructor
 @Service
-@Slf4j
 public class UserService {
 
-    private RequestRepository requestRepository;
+    private final RequestRepository requestRepository;
+    private final GithubUserService githubUserService;
+    private final UserMapper userMapper;
 
-    public UserService(RequestRepository requestRepository) {
-        this.requestRepository = requestRepository;
+    @Transactional
+    public UserDTO getUser(String login) throws CustomException {
+        Request request = requestRepository.findByLogin(login)
+               .orElseGet(() -> requestRepository.save(new Request(login)));
+        request.increment();
+
+        GithubUserDTO ghUser = githubUserService.getGithubUser(login);
+
+        UserDTO user = userMapper.mapToUserDTO(ghUser);
+        user.setCalculations(Calculator.calculate(ghUser.getFollowers(), ghUser.getPublicRepos()));
+
+        return user;
     }
 
-    public UserDTO getUser(String login) {
-        requestRepository.increment(login);
-        Optional<GithubUserDTO> ghUser = getGithubUser(login);
-
-        return ghUser.isPresent() ? new UserDTO(ghUser.get()) : null;
-    }
-
-    private Optional<GithubUserDTO> getGithubUser(String login) {
-
-        final String uri = "https://api.github.com/users/" + login;
-
-        RestTemplate restTemplate = new RestTemplate();
-        GithubUserDTO ghUser;
-        try {
-            ghUser = restTemplate.getForObject(uri, GithubUserDTO.class);
-        } catch (HttpClientErrorException.NotFound e){
-            log.error("User {} not found on Github", login);
-            ghUser = null;
-        }
-
-        return Optional.ofNullable(ghUser);
-    }
 }
